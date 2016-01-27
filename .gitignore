@@ -1,3 +1,2 @@
-config.h
-sinit
-sinit.o
+init
+*.o

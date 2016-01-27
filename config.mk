@@ -1,4 +1,4 @@
-# sinit version
+# NodeOS-init version
 VERSION = 1.0
 
 # paths
