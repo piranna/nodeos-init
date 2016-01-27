@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "array.h"
-
 
 typedef void (*tTermination)(void);
 
@@ -29,22 +27,11 @@ static tTermination termination = &poweroff;
 
 char** getCommand(int argc, char* argv[])
 {
-	// Use init given by arguments, or the default one
-	if(argc > 1)
-	{
-		array_free((void**)initcmd, 1);
+	// No arguments, use default command
+	if(argc == 1) return initcmd;
 
-		array_pop((void**)argv, argc);
-	}
-	else
-	{
-		array_free((void**)argv, argc);
-
-		// Set argv to the default command
-		argv = initcmd;
-	}
-
-	return argv;
+	// Use init given by arguments
+	return &argv[1];
 }
 
 static void poweroff(void)
@@ -133,7 +120,7 @@ void terminate(tTermination cmd)
 int main(int argc, char* argv[])
 {
 	// Not `PID 1`? Return error
-	if(getpid() != 1) return 1;
+//	if(getpid() != 1) return 1;
 
 	// Exec init command
 	spawn(getCommand(argc, argv));

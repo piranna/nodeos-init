@@ -1,6 +1,6 @@
 include config.mk
 
-OBJ = src/init.o src/array.o
+OBJ = init.o
 BIN = init
 
 all: $(BIN)
