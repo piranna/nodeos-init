@@ -9,19 +9,21 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 
-typedef void (*tTermination)(void);
+typedef int (*tTermination)(void);
 
-static void poweroff(void);
-static void sigreap(void);
+static int poweroff(void);
+static bool sigreap(void);
+
 static void terminate(tTermination termination);
 
 static char* initcmd[] = { "/sbin/init", NULL };
 
-// By default, when there are no processes shutdown the machine
+// By default, when there are no more processes running, shutdown the machine
 static tTermination termination = &poweroff;
 
 
@@ -34,19 +36,39 @@ char** getCommand(int argc, char* argv[])
 	return &argv[1];
 }
 
-static void poweroff(void)
+static int poweroff(void)
 {
-	reboot(LINUX_REBOOT_CMD_POWER_OFF);
+	return reboot(LINUX_REBOOT_CMD_POWER_OFF);
 }
 
-static void restart(void)
+static int restart(void)
 {
-	reboot(LINUX_REBOOT_CMD_POWER_OFF);
+	return reboot(LINUX_REBOOT_CMD_POWER_OFF);
 }
 
-void listenSignals(void)
+// Wait for signals
+void listenSignals(sigset_t set)
 {
-	// Sanitize signals
+	bool loop = true;
+
+	while(loop)
+	{
+		int sig;
+		sigwait(&set, &sig);
+
+		switch(sig)
+		{
+			case SIGCHLD: loop = sigreap()    ; break;
+			case SIGINT : terminate(&restart) ; break;  // ctrl-alt-del
+			case SIGTERM: terminate(&poweroff); break;
+			// Ignore other signals
+		}
+	}
+}
+
+sigset_t prepareSignals(void)
+{
+	// Block all signals
 	sigset_t set;
 	sigfillset(&set);
 	sigprocmask(SIG_BLOCK, &set, NULL);
@@ -54,35 +76,32 @@ void listenSignals(void)
 	// Disable `ctrl-alt-del` so we can process it
 	reboot(LINUX_REBOOT_CMD_CAD_OFF);
 
-	// Wait for signals
-	while(1)
-	{
-		int sig;
-		sigwait(&set, &sig);
-
-		switch(sig)
-		{
-			case SIGCHLD: sigreap()           ; break;
-			case SIGINT : terminate(&restart) ; break;  // ctrl-alt-del
-			case SIGTERM: terminate(&poweroff); break;
-		}
-	}
+	// Return the blocked signals mask to be used
+	return set;
 }
 
-static void sigreap(void)
+static bool sigreap(void)
 {
-	while(1)
+	while(true)
 		switch(waitpid(WAIT_ANY, NULL, WNOHANG))
 		{
 			// No more pending terminated process, go back to listen more signals
-			case 0: return;
+			case 0: return true;
 
 			case -1:
 				// No more child processes, shutdown the machine
 				if(errno == ECHILD)
 				{
 					sync();
-					(*termination)();
+
+					if((*termination)() == -1)
+					{
+						// System shutdown failed probably due to lack of permissions, just
+						// show an error message and exit the program
+						perror("termination");
+
+						return false;
+					}
 				}
 		}
 }
@@ -101,6 +120,7 @@ static void spawn(char* const argv[])
 
 			execvp(argv[0], argv);
 
+			// There was an error executing child process, show error message and exit
 			perror("execvp");
 			_exit(1);
 		}
@@ -111,7 +131,7 @@ void terminate(tTermination cmd)
 {
 	termination = cmd;
 
-	// Send `SIGTERM` to all the system processes
+	// Send `SIGTERM` to all (system) child processes
 	if(kill(-1, SIGTERM) == -1)
 		perror("kill");
 }
@@ -119,15 +139,16 @@ void terminate(tTermination cmd)
 
 int main(int argc, char* argv[])
 {
-	// Not `PID 1`? Return error
-//	if(getpid() != 1) return 1;
+	// Prepare signals
+	sigset_t set = prepareSignals();
 
 	// Exec init command
 	spawn(getCommand(argc, argv));
 
 	// Start listening and processing signals
-	listenSignals();
+	listenSignals(set);
 
-	/* not reachable */
-	return 0;
+	// Exit program failfully since we were not able to shutdown the system,
+	// probably due to lack of permissions
+	return 1;
 }
