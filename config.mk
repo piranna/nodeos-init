@@ -5,8 +5,8 @@ VERSION = 1.0
 PREFIX = /usr/local
 MANPREFIX = $(PREFIX)/share/man
 
-CC = cc
-LD = $(CC)
+CC ?= cc
+LD ?= $(CC)
 CPPFLAGS =
 CFLAGS   = -Wextra -Wall -Os
-LDFLAGS  = -s -static
+LDFLAGS  = -s

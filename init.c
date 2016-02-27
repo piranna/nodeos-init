@@ -14,6 +14,12 @@
 #include <unistd.h>
 
 
+// musl don't have defined that constant
+#ifndef WAIT_ANY
+#  define WAIT_ANY (-1)
+#endif
+
+
 typedef int (*tTermination)(void);
 
 static int poweroff(void);
