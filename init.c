@@ -2,6 +2,7 @@
 
 #include <linux/reboot.h>
 
+#include <sys/mount.h>
 #include <sys/reboot.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -147,6 +148,11 @@ int main(int argc, char* argv[])
 {
 	// Prepare signals
 	sigset_t set = prepareSignals();
+
+	// Mount `devtmpfs` filesystem in `/dev`. This is mandatory for Node.js on
+	// NodeOS, but it's fairly common so it doesn't hurts (too much...)
+	if(mount("devtmpfs", "/dev", "devtmpfs", 0, NULL) == -1)
+		perror("mount");
 
 	// Exec init command
 	spawn(getCommand(argc, argv));
