@@ -28,7 +28,7 @@ static bool sigreap(void);
 
 static void terminate(tTermination termination);
 
-static char* initcmd[] = { "/sbin/init", NULL };
+const char* initcmd = "/sbin/init";
 
 // By default, when there are no more processes running, shutdown the machine
 static tTermination termination = &poweroff;
@@ -36,11 +36,12 @@ static tTermination termination = &poweroff;
 
 char** getCommand(int argc, char* argv[])
 {
-	// No arguments, use default command
-	if(argc == 1) return initcmd;
-
 	// Use init given by arguments
-	return &argv[1];
+	if(argc > 1 && argv[1][0] == '/') return &argv[1];
+
+	// No arguments or not given a command, use default one
+	argv[0] = initcmd;
+	return argv;
 }
 
 static int poweroff(void)
