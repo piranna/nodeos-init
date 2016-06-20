@@ -23,15 +23,18 @@
 
 typedef int (*tTermination)(void);
 
+static void nuke();
 static int poweroff(void);
 static bool sigreap(void);
 
 static void terminate(tTermination termination);
 
 const char* initcmd = "/sbin/init";
+const unsigned int countdown = 5;
 
 // By default, when there are no more processes running, shutdown the machine
 static tTermination termination = &poweroff;
+static bool exiting = false;
 
 
 char** getCommand(int argc, char* argv[])
@@ -66,6 +69,7 @@ void listenSignals(sigset_t set)
 
 		switch(sig)
 		{
+			case SIGALRM: nuke()              ; break;
 			case SIGCHLD: loop = sigreap()    ; break;
 			case SIGINT : terminate(&restart) ; break;  // ctrl-alt-del
 			case SIGTERM: terminate(&poweroff); break;
@@ -97,12 +101,22 @@ void umount_filesystems()
 
 static bool sigreap(void)
 {
+	// Stop the nuke timer
+	if(exiting) alarm(0);
+
 	while(true)
 		switch(waitpid(WAIT_ANY, NULL, WNOHANG))
 		{
 			// No more pending terminated process, go back to listen more signals
-			case 0: return true;
+			case 0:
+			{
+				// Re-start the nuke timer
+				if(exiting) alarm(countdown);
 
+				return true;
+			}
+
+			// Error
 			case -1:
 				// No more child processes, shutdown the machine
 				if(errno == ECHILD)
@@ -148,8 +162,17 @@ void terminate(tTermination cmd)
 	termination = cmd;
 
 	// Send `SIGTERM` to all (system) child processes
-	if(kill(-1, SIGTERM) == -1)
-		perror("kill");
+	if(kill(-1, SIGTERM) == -1) perror("kill SIGTERM");
+
+	// Start countdown to send `SIGKILL` to the remaining processes and nuke them
+	exiting = true;
+	alarm(countdown);
+}
+
+void nuke()
+{
+	// Send `SIGKILL` to all (system) child processes
+	if(kill(-1, SIGKILL) == -1) perror("kill SIGKILL");
 }
 
 
