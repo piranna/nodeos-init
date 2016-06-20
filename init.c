@@ -88,6 +88,13 @@ sigset_t prepareSignals(void)
 	return set;
 }
 
+void umount_filesystems()
+{
+	// [ToDo] Read `/proc/mounts` and unmount all filesystems
+	if(umount("/dev" ) == -1) perror("umount devtmpfs");
+	if(umount("/proc") == -1) perror("umount procfs");
+}
+
 static bool sigreap(void)
 {
 	while(true)
@@ -101,6 +108,7 @@ static bool sigreap(void)
 				if(errno == ECHILD)
 				{
 					sync();
+					umount_filesystems();
 
 					if((*termination)() == -1)
 					{
