@@ -3,7 +3,6 @@
 #include <linux/reboot.h>
 
 #include <sys/mount.h>
-#include <sys/queue.h>
 #include <sys/reboot.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -14,6 +13,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include "queue.h"
 
 
 // musl don't have defined that constant
