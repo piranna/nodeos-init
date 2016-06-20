@@ -181,14 +181,12 @@ int main(int argc, char* argv[])
 	// Prepare signals
 	sigset_t set = prepareSignals();
 
-	// Mount `devtmpfs` filesystem in `/dev`. This is mandatory for Node.js on
-	// NodeOS, but it's fairly common so it doesn't hurts (too much...)
-	if(mount("devtmpfs", "/dev", "devtmpfs", 0, NULL) == -1)
-		perror("mount devtmpfs");
-
-	// Mount `procfs` filesystem in `/dev`. This is needed by musl.
+	// Mount common kernel filesystems
 	if(mount("procfs", "/proc", "procfs", 0, NULL) == -1)
 		perror("mount procfs");
+
+	if(mount("devtmpfs", "/dev", "devtmpfs", 0, NULL) == -1)
+		perror("mount devtmpfs");
 
 	// Exec init command
 	spawn(getCommand(argc, argv));
