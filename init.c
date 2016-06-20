@@ -3,6 +3,7 @@
 #include <linux/reboot.h>
 
 #include <sys/mount.h>
+#include <sys/queue.h>
 #include <sys/reboot.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -94,9 +95,45 @@ sigset_t prepareSignals(void)
 
 void umount_filesystems()
 {
-	// [ToDo] Read `/proc/mounts` and unmount all filesystems
-	if(umount("/dev" ) == -1) perror("umount devtmpfs");
-	if(umount("/proc") == -1) perror("umount procfs");
+	// Create a LIFO strcture to host the mounted filesystems
+	SLIST_HEAD(slisthead, entry) head = SLIST_HEAD_INITIALIZER(head);
+
+  struct entry
+	{
+		char path[80];
+    SLIST_ENTRY(entry) entries;
+  } *item;
+
+  SLIST_INIT(&head);
+
+
+	// Get mounted filesystems and fill the LIFO structure
+	FILE*	pFile = fopen("/proc/mounts", "r");
+	while(!feof(pFile))
+	{
+		item = malloc(sizeof(struct entry));
+
+		if(fscanf(pFile, "%*s %s %*s %*s 0 0", item->path) == EOF)
+		{
+			free(item);
+			break;
+		};
+
+    SLIST_INSERT_HEAD(&head, item, entries);
+	};
+	fclose(pFile);
+
+
+	// Unmount filesystems in reverse order how they were mounted
+	while(!SLIST_EMPTY(&head))
+	{
+		item = SLIST_FIRST(&head);
+	  SLIST_REMOVE_HEAD(&head, entries);
+
+		if(umount(item->path) == -1) perror(item->path);
+
+	  free(item);
+	}
 }
 
 static bool sigreap(void)
