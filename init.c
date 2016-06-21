@@ -223,7 +223,7 @@ int main(int argc, char* argv[])
 	sigset_t set = prepareSignals();
 
 	// Mount common kernel filesystems
-	if(mount("procfs", "/proc", "procfs", 0, NULL) == -1)
+	if(mount("procfs", "/proc", "proc", 0, NULL) == -1)
 		perror("mount procfs");
 
 	if(mount("devtmpfs", "/dev", "devtmpfs", 0, NULL) == -1)
