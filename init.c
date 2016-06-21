@@ -209,6 +209,9 @@ void terminate(tTermination cmd)
 
 void nuke()
 {
+	// Ignore the `SIGALARM` signal if we are not exiting
+	if(!exiting) return;
+
 	// Send `SIGKILL` to all (system) child processes
 	if(kill(-1, SIGKILL) == -1) perror("kill SIGKILL");
 }
