@@ -56,7 +56,7 @@ static int poweroff(void)
 
 static int restart(void)
 {
-	return reboot(LINUX_REBOOT_CMD_POWER_OFF);
+	return reboot(LINUX_REBOOT_CMD_RESTART);
 }
 
 // Wait for signals
@@ -99,13 +99,13 @@ void umount_filesystems()
 	// Create a LIFO strcture to host the mounted filesystems
 	SLIST_HEAD(slisthead, entry) head = SLIST_HEAD_INITIALIZER(head);
 
-  struct entry
+	struct entry
 	{
 		char path[80];
-    SLIST_ENTRY(entry) entries;
-  } *item;
+		SLIST_ENTRY(entry) entries;
+	} *item;
 
-  SLIST_INIT(&head);
+	SLIST_INIT(&head);
 
 
 	// Get mounted filesystems and fill the LIFO structure
@@ -120,7 +120,7 @@ void umount_filesystems()
 			break;
 		};
 
-    SLIST_INSERT_HEAD(&head, item, entries);
+		SLIST_INSERT_HEAD(&head, item, entries);
 	};
 	fclose(pFile);
 
@@ -129,11 +129,11 @@ void umount_filesystems()
 	while(!SLIST_EMPTY(&head))
 	{
 		item = SLIST_FIRST(&head);
-	  SLIST_REMOVE_HEAD(&head, entries);
+		SLIST_REMOVE_HEAD(&head, entries);
 
 		if(umount(item->path) == -1) perror(item->path);
 
-	  free(item);
+		free(item);
 	}
 }
 
